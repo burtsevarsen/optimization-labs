@@ -10,11 +10,22 @@ class QuadraticOracle(Oracle):
     """
 
     def __init__(self, dim: int = 100, kappa: float = 100.0,
-                 L: float = 1.0, seed: int = 0):
+                 L: float = 1.0, seed: int = 0, spectrum: str = "linspace"):
         rng = np.random.default_rng(seed)
         Q, _ = np.linalg.qr(rng.standard_normal((dim, dim)))
         mu = L / kappa
-        eigs = np.linspace(mu, L, dim) # TODO: add random distribution of task curvate
+        if spectrum == "linspace":
+            eigs = np.linspace(mu, L, dim)
+        elif spectrum == "uniform":
+            # случайные кривизны в [mu, L]; края фиксируем, чтобы kappa = L/mu точно
+            eigs = np.sort(rng.uniform(mu, L, dim))
+            eigs[0], eigs[-1] = mu, L
+        elif spectrum == "loguniform":
+            # большинство направлений «плоские», как в реальных задачах
+            eigs = np.sort(np.exp(rng.uniform(np.log(mu), np.log(L), dim)))
+            eigs[0], eigs[-1] = mu, L
+        else:
+            raise ValueError(f"unknown spectrum: {spectrum}")
         A = Q @ np.diag(eigs) @ Q.T
         self.A = 0.5 * (A + A.T)
         self.b = rng.standard_normal(dim)
@@ -22,17 +33,17 @@ class QuadraticOracle(Oracle):
         self.name = f"quadratic(dim={dim}, kappa={kappa:g})"
         self._L = L
         self._mu = mu
-        self._x_star = # TODO
+        self._x_star = np.linalg.solve(self.A, self.b)   # A x* = b
         self._f_star = 0.5 * self._x_star @ self.A @ self._x_star - self.b @ self._x_star
 
     def f(self, x: np.ndarray) -> float:
         return 0.5 * x @ self.A @ x - self.b @ x
 
     def grad(self, x: np.ndarray) -> np.ndarray:
-        return # TODO
+        return self.A @ x - self.b
 
     def hess(self, x: np.ndarray) -> np.ndarray:
-        return # TODO
+        return self.A
 
     @property
     def info(self) -> OracleInfo:

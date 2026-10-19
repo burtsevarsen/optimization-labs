@@ -27,6 +27,6 @@ class GD(Method):
         g = self.oracle.grad(x)
         eta = self._resolve_step(x, g, state)
         state["x_prev"] = x
-        state["x"] = # TODO
+        state["x"] = x - eta * g
         state["step"] = eta
         return state
